@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>jQuery Custom Plugin</title>
+	<script type = "text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+	<script type="text/javascript" src="style-change.js"></script>
+</head>
+<body>
+	<div id="change-style">
+		<span>Change the background color</span>
+	</div>
+	<div id="change-style-default">
+		<span>Change the background color</span>
+	</div>
+</body>
+<script type="text/javascript">
+	jQuery('#change-style').changeColor({
+		color: "red"
+	}).css("font-size", "30px");
+</script>
+</html>
