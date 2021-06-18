@@ -16,6 +16,7 @@
         "url": "https://github.com"
     },
     "dependencies": {
+        "adaptivecards": "^2.9.0",
         "botbuilder": "~4.11.0",
         "botbuilder-dialogs": "^4.13.6",
         "dotenv": "^8.2.0",

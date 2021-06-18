@@ -1,16 +1,18 @@
 const { WaterfallDialog, ComponentDialog } = require('botbuilder-dialogs');
+const { MessageFactory, CardFactory, AttachmentLayoutTypes } = require('botbuilder');
 
 const { ConfirmPrompt, ChoicePrompt, DateTimePrompt, NumberPrompt, TextPrompt } = require('botbuilder-dialogs');
 
 const { DialogSet, DialogTurnStatus } = require('botbuilder-dialogs');
 
-const CHOICE_PROMPT    = 'CHOICE_PROMPT';
-const CONFIRM_PROMPT   = 'CONFIRM_PROMPT';
-const TEXT_PROMPT      = 'TEXT_PROMPT';
-const NUMBER_PROMPT    = 'NUMBER_PROMPT';
-const DATETIME_PROMPT  = 'DATETIME_PROMPT';
-const WATERFALL_DIALOG = 'WATERFALL_DIALOG';
-var endDialog ='';
+const SelectCityCard = require('../resources/adaptiveCards/SelectCityCard');
+const SelectDateCard = require('../resources/adaptiveCards/SelectDateCard');
+const RoomBookingConfirmationCard = require('../resources/adaptiveCards/RoomBookingConfirmationCard');
+
+const TEXT_PROMPT = 'TEXT_PROMPT';
+const DATETIME_PROMPT = 'DATETIME_PROMPT';
+const ROOM_BOOKING_DIALOG = 'ROOM_BOOKING_DIALOG';
+var endDialog = '';
 
 class RoomBookingDialog extends ComponentDialog {
     constructor(conservsationState, userState) {
@@ -18,22 +20,16 @@ class RoomBookingDialog extends ComponentDialog {
         super('roomBookingDialog');
 
         this.addDialog(new TextPrompt(TEXT_PROMPT));
-        this.addDialog(new ChoicePrompt(CHOICE_PROMPT));
-        this.addDialog(new ConfirmPrompt(CONFIRM_PROMPT));
-        this.addDialog(new NumberPrompt(NUMBER_PROMPT, this.noOfParticipantsValidator));
         this.addDialog(new DateTimePrompt(DATETIME_PROMPT));
 
-        this.addDialog(new WaterfallDialog(WATERFALL_DIALOG, [
-            this.firstStep.bind(this),  // Ask confirmation if user wants to make reservation?
-            this.getName.bind(this),    // Get name from user
-            this.getNumberOfParticipants.bind(this),  // Number of participants for reservation
-            this.getDate.bind(this), // Date of reservation
-            this.getTime.bind(this),  // Time of reservation
-            this.confirmStep.bind(this), // Show summary of values entered by user and ask confirmation to make reservation
+        this.addDialog(new WaterfallDialog(ROOM_BOOKING_DIALOG, [
+            this.getDestination.bind(this),
+            this.getDate.bind(this),
+            this.getHotelsList.bind(this),
             this.summaryStep.bind(this)
         ]));
 
-        this.initialDialogId = WATERFALL_DIALOG;
+        this.initialDialogId = ROOM_BOOKING_DIALOG;
     }
 
     async run(turnContext, accessor) {
@@ -47,64 +43,74 @@ class RoomBookingDialog extends ComponentDialog {
         }
     }
 
-    async firstStep(step) {
+    async getDestination(step) {
         endDialog = false;
+        await step.context.sendActivity({
+            attachments: [CardFactory.adaptiveCard(SelectCityCard)]
+        });
         // Running a prompt here means the next WaterfallStep will be run when the users response is received.
-        return await step.prompt(CONFIRM_PROMPT, 'Would you like to make a reservation?', ['yes', 'no']);
-    }
-
-    async getName(step) {
-        console.log(step.result)
-        if (step.result === true) {
-            return await step.prompt(TEXT_PROMPT, 'In what name reservation is to be made?');
-        }
-
-        if (step.result === false) {
-            await step.context.sendActivity("You chose not to go ahead with reservation.");
-            endDialog = true;
-            return await step.endDialog();
-        }
-    }
-
-    async getNumberOfParticipants(step) {
-        step.values.name = step.result
-        return await step.prompt(NUMBER_PROMPT, 'How many participants ( 1 - 150)?');
+        return await step.prompt(TEXT_PROMPT, '');
     }
 
     async getDate(step) {
-        step.values.noOfParticipants = step.result
-        return await step.prompt(DATETIME_PROMPT, 'On which date you want to make the reservation?')
+        endDialog = false;
+        step.values.destination = step.result
+        await step.context.sendActivity({
+            attachments: [CardFactory.adaptiveCard(SelectDateCard)]
+        });
+        return await step.prompt(TEXT_PROMPT, '');
     }
 
-    async getTime(step) {
+    async getHotelsList(step) {
         step.values.date = step.result
-        return await step.prompt(DATETIME_PROMPT, 'At what time?')
-    }
-
-    async confirmStep(step) {
-        step.values.time = step.result
-        var msg = ` You have entered following values: \n Name: ${step.values.name}\n Participants: ${step.values.noOfParticipants}\n Date: ${JSON.stringify(step.values.date)}\n Time: ${JSON.stringify(step.values.time)}`
-        await step.context.sendActivity(msg);
-        return await step.prompt(CONFIRM_PROMPT, 'Are you sure that all values are correct and you want to make the reservation?', ['yes', 'no']);
+        await step.context.sendActivity({
+            attachments: this.productChoices(),
+            attachmentLayout: AttachmentLayoutTypes.Carousel
+        });
+        return { status: DialogTurnStatus.waiting };
     }
 
     async summaryStep(step) {
-        if (step.result === true) {
-            await step.context.sendActivity("Reservation successfully made. Your reservation id is : 12345678")
-            endDialog = true;
-            return await step.endDialog();
-        }
+        step.values.hotel = step.result
+        await step.context.sendActivity({
+            attachments: [CardFactory.adaptiveCard(RoomBookingConfirmationCard)]
+        });
+        console.log(step.values);
+        console.log(step.result);
+        console.log(step);
+        return await step.endDialog();
     }
 
     async isDialogComplete() {
         return endDialog;
     }
 
-    async noOfParticipantsValidator(promptContext) {
-        console.log(promptContext.recognized.value)
-        // This condition is our validation rule. You can also change the value at this point.
-        return promptContext.recognized.succeeded && promptContext.recognized.value > 1 && promptContext.recognized.value < 150;
+    productChoices() {
+        const productSeriesOptions = [
+            CardFactory.heroCard(
+                'Hotel ABC \n\n INR 1,400 per room/night \n\n 4 ★★★★☆ (1746 reviews)',
+                ['https://dynamic-media-cdn.tripadvisor.com/media/photo-o/14/e5/53/d3/sonesta-inns-resort.jpg?w=900&h=-1&s=1'],
+            ),
+
+            CardFactory.heroCard(
+                'Hotel PQR \n\n INR 1,500 per room/night \n\n 3 ★★★☆☆ (1436 reviews)',
+                ['https://media.istockphoto.com/photos/interior-of-a-modern-luxury-hotel-double-bed-bedroom-picture-id1163498940?k=6&m=1163498940&s=612x612&w=0&h=NEsid6vx4Lfy-6hrZoPJacuvgk_krlxS8yI9VD5Wl7M='],
+            ),
+
+            CardFactory.heroCard(
+                'Hotel MNO \n\n INR 1,300 per room/night \n\n 4 ★★★★☆ (1777 reviews)',
+                ['https://thumbs.dreamstime.com/b/hotel-lobby-luxury-staircases-fountain-39479289.jpg'],
+            ),
+
+            CardFactory.heroCard(
+                'Hotel XYZ \n\n INR 1,600 per room/night \n\n 3 ★★★☆☆ (1892 reviews)',
+                ['https://skift.com/wp-content/uploads/2021/05/JS_190520_0010-1024x684.jpg'],
+            )
+        ];
+
+        return productSeriesOptions;
     }
+
 }
 
 module.exports.RoomBookingDialog = RoomBookingDialog;

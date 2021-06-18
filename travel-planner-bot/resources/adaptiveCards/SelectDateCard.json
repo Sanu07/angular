@@ -1,0 +1,56 @@
+{
+    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+    "type": "AdaptiveCard",
+    "version": "1.3",
+    "body": [
+        {
+            "type": "TextBlock",
+            "text": "For when you want to book room?",
+            "size": "Medium",
+            "wrap": true,
+            "fontType": "Default",
+            "color": "Accent"
+        }
+    ],
+    "actions": [
+        {
+            "type": "Action.Submit",
+            "title": "Today",
+            "data": {
+                "value": "today"
+            }
+        },
+        {
+            "type": "Action.Submit",
+            "title": "Tomorrow",
+            "data": {
+                "value": "tomorrow"
+            }
+        },
+        {
+            "type": "Action.ShowCard",
+            "title": "Other",
+            "card": {
+                "type": "AdaptiveCard",
+                "body": [
+                    {
+                        "type": "Input.Date",
+                        "id": "dateForRoomBooking",
+                        "isRequired": true,
+                        "errorMessage": "Should be a valid date",
+                        "label": "Date"
+                    }
+                ],
+                "actions": [
+                    {
+                        "type": "Action.Submit",
+                        "title": "OK",
+                        "style": "positive"
+                    }
+                ],
+                "$schema": "http://adaptivecards.io/schemas/adaptive-card.json"
+            },
+            "style": "positive"
+        }
+    ]
+}

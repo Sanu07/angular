@@ -2,9 +2,15 @@
 // Licensed under the MIT License.
 
 const { ActivityHandler, MessageFactory } = require('botbuilder');
+const { ActionTypes } = require('botframework-schema');
 
 const { RoomBookingDialog } = require('./componentDialogs/roomBookingDialog');
 const { FlightBookingDialog } = require('./componentDialogs/flightBookingDialog');
+const { CardFactory } = require('botbuilder');
+
+const FLIGHT_BOOKING = "Book a flight";
+const ROOM_BOOKING = "Book a room";
+const WELCOME_MESSAGE = "Hi, I am your travel planner, you can ask me to book your flight and hotel rooms 😊"
 
 class TravelPlannerBot extends ActivityHandler {
     constructor(conversationState, userState) {
@@ -45,7 +51,7 @@ class TravelPlannerBot extends ActivityHandler {
         // Iterate over all new members added to the conversation.
         for (const idx in activity.membersAdded) {
             if (activity.membersAdded[idx].id !== activity.recipient.id) {
-                const welcomeMessage = `Welcome to Restaurant Reservation Bot ${activity.membersAdded[idx].name}. `;
+                const welcomeMessage = WELCOME_MESSAGE;
                 await context.sendActivity(welcomeMessage);
                 await this.sendSuggestedActions(context);
             }
@@ -53,8 +59,12 @@ class TravelPlannerBot extends ActivityHandler {
     }
 
     async sendSuggestedActions(context) {
-        var reply = MessageFactory.suggestedActions(['Room Booking', 'Flight Booking'], 'What would you like to do today ?');
+        var reply = MessageFactory.suggestedActions([ROOM_BOOKING, FLIGHT_BOOKING], '');
         await context.sendActivity(reply);
+        // await context.sendActivity({
+        //     text: 'Enter reservation details for cancellation:',
+        //     attachments: [CardFactory.adaptiveCard(CARDS[0])]
+        // });
     }
 
     async dispatchToIntentAsync(context) {
@@ -62,7 +72,10 @@ class TravelPlannerBot extends ActivityHandler {
         var currentIntent = '';
         const previousIntent = await this.previousIntent.get(context, {});
         const conversationData = await this.conversationData.get(context, {});
-
+        if (context.activity.text === undefined && context.activity.value) {
+            context.activity.text = JSON.stringify(context.activity.value);
+            console.log(context.activity.text);
+        }
         if (previousIntent.intentName && conversationData.endDialog === false) {
             currentIntent = previousIntent.intentName;
         }
@@ -74,7 +87,7 @@ class TravelPlannerBot extends ActivityHandler {
             await this.previousIntent.set(context, { intentName: context.activity.text });
         }
         switch (currentIntent) {
-            case 'Room Booking':
+            case ROOM_BOOKING:
                 console.log("Inside Room Booking");
                 await this.conversationData.set(context, { endDialog: false });
                 await this.roomBookingDialog.run(context, this.dialogState);
@@ -84,7 +97,7 @@ class TravelPlannerBot extends ActivityHandler {
                     await this.sendSuggestedActions(context);
                 }
                 break;
-            case 'Flight Booking':
+            case FLIGHT_BOOKING:
                 console.log("Inside Flight Booking");
                 await this.conversationData.set(context, { endDialog: false });
                 await this.flightBookingDialog.run(context, this.dialogState);
@@ -96,6 +109,7 @@ class TravelPlannerBot extends ActivityHandler {
                 break;
             default:
                 console.log("Did not match any case");
+                console.log(currentIntent);
                 break;
         }
     }
