@@ -4,7 +4,6 @@
     "version": "1.3",
     "body": [
         {
-            "speak": "Tom's Pie is a Pizza restaurant which is rated 9.3 by customers.",
             "type": "ColumnSet",
             "columns": [
                 {
@@ -21,14 +20,14 @@
                         },
                         {
                             "type": "TextBlock",
-                            "text": "${aggregateRating.ratingValue} stars (${aggregateRating.reviewCount} reviews) · ${priceRange}",
+                            "text": "${ratings} ${reviews}",
                             "isSubtle": true,
                             "spacing": "none",
                             "wrap": true
                         },
                         {
                             "type": "TextBlock",
-                            "text": "**${review[0].author}** said \"${review[0].description}\"",
+                            "text": "**${name}** room booked for **${destination}** for **${date}**",
                             "size": "small",
                             "wrap": true,
                             "maxLines": 3
@@ -41,8 +40,9 @@
                     "items": [
                         {
                             "type": "Image",
-                            "url": "${image}",
-                            "altText": "${imageAlt}"
+                            "url": "${imageURL}",
+                            "altText": "Image cannot be loaded",
+                            "size": "auto"
                         }
                     ]
                 }

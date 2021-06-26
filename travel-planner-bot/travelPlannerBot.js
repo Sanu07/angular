@@ -6,7 +6,9 @@ const { ActionTypes } = require('botframework-schema');
 
 const { RoomBookingDialog } = require('./componentDialogs/roomBookingDialog');
 const { FlightBookingDialog } = require('./componentDialogs/flightBookingDialog');
+const WelcomeCard = require('./resources/adaptiveCards/WelcomeCard');
 const { CardFactory } = require('botbuilder');
+const { LuisRecognizer } = require('botbuilder-ai');
 
 const FLIGHT_BOOKING = "Book a flight";
 const ROOM_BOOKING = "Book a room";
@@ -25,9 +27,20 @@ class TravelPlannerBot extends ActivityHandler {
         this.previousIntent = this.conversationState.createProperty("previousIntent");
         this.conversationData = this.conversationState.createProperty('conversationData');
 
-        // See https://aka.ms/about-bot-activity-message to learn more about the message and other activity types.
+        const dispatchRecognizer = new LuisRecognizer({
+            applicationId: process.env.LuisAppId,
+            endpointKey: process.env.LuisAPIKey,
+            endpoint: `https://${process.env.LuisAPIHostName}.api.cognitive.microsoft.com`
+        }, {
+            includeAllIntents: true,
+            apiVersion: 'v3'
+        }, true);
+
         this.onMessage(async (context, next) => {
-            await this.dispatchToIntentAsync(context);
+            const luisResult = await dispatchRecognizer.recognize(context);
+            const intent = LuisRecognizer.topIntent(luisResult);
+            const entities = luisResult.entities;
+            await this.dispatchToIntentAsync(context, intent, entities);
             await next();
         });
 
@@ -52,22 +65,19 @@ class TravelPlannerBot extends ActivityHandler {
         for (const idx in activity.membersAdded) {
             if (activity.membersAdded[idx].id !== activity.recipient.id) {
                 const welcomeMessage = WELCOME_MESSAGE;
-                await context.sendActivity(welcomeMessage);
+                // await context.sendActivity(welcomeMessage);
                 await this.sendSuggestedActions(context);
             }
         }
     }
 
     async sendSuggestedActions(context) {
-        var reply = MessageFactory.suggestedActions([ROOM_BOOKING, FLIGHT_BOOKING], '');
-        await context.sendActivity(reply);
-        // await context.sendActivity({
-        //     text: 'Enter reservation details for cancellation:',
-        //     attachments: [CardFactory.adaptiveCard(CARDS[0])]
-        // });
+        await context.sendActivity({
+            attachments: [CardFactory.adaptiveCard(WelcomeCard)]
+        });
     }
 
-    async dispatchToIntentAsync(context) {
+    async dispatchToIntentAsync(context, intent, entities) {
 
         var currentIntent = '';
         const previousIntent = await this.previousIntent.get(context, {});
@@ -80,14 +90,14 @@ class TravelPlannerBot extends ActivityHandler {
             currentIntent = previousIntent.intentName;
         }
         else if (previousIntent.intentName && conversationData.endDialog === true) {
-            currentIntent = context.activity.text;
+            currentIntent = intent;
         }
         else {
-            currentIntent = context.activity.text;
-            await this.previousIntent.set(context, { intentName: context.activity.text });
+            currentIntent = intent;
+            await this.previousIntent.set(context, { intentName: intent });
         }
         switch (currentIntent) {
-            case ROOM_BOOKING:
+            case 'Book_a_room':
                 console.log("Inside Room Booking");
                 await this.conversationData.set(context, { endDialog: false });
                 await this.roomBookingDialog.run(context, this.dialogState);
@@ -97,12 +107,13 @@ class TravelPlannerBot extends ActivityHandler {
                     await this.sendSuggestedActions(context);
                 }
                 break;
-            case FLIGHT_BOOKING:
+            case 'Book_a_flight':
                 console.log("Inside Flight Booking");
                 await this.conversationData.set(context, { endDialog: false });
-                await this.flightBookingDialog.run(context, this.dialogState);
+                await this.flightBookingDialog.run(context, this.dialogState, entities);
                 conversationData.endDialog = await this.flightBookingDialog.isDialogComplete();
                 if (conversationData.endDialog) {
+                    this.flightConfirmationTime = 2;
                     await this.previousIntent.set(context, { intentName: null });
                     await this.sendSuggestedActions(context);
                 }

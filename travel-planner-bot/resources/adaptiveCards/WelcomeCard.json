@@ -1,0 +1,77 @@
+{
+    "type": "AdaptiveCard",
+    "body": [
+        {
+            "type": "ColumnSet",
+            "columns": [
+                {
+                    "type": "Column",
+                    "items": [
+                        {
+                            "type": "Image",
+                            "style": "Person",
+                            "url": "https://www.hotelbusiness.com/wp-content/uploads/2019/10/travelliance.jpg",
+                            "size": "Large",
+                            "width": "250px",
+                            "height": "200px"
+                        }
+                    ],
+                    "width": "auto"
+                }
+            ],
+            "horizontalAlignment": "Center",
+            "style": "default"
+        },
+        {
+            "type": "TextBlock",
+            "weight": "bolder",
+            "text": "Hi, I am your travel planner, you can ask me to book your flight and hotel rooms 😊",
+            "wrap": true,
+            "fontType": "Monospace",
+            "color": "Accent"
+        },
+        {
+            "type": "ColumnSet",
+            "separator": true,
+            "columns": [
+                {
+                    "type": "Column",
+                    "width": "stretch",
+                    "items": [
+                        {
+                            "type": "ActionSet",
+                            "actions": [
+                                {
+                                    "type": "Action.Submit",
+                                    "title": "Book a flight",
+                                    "data": "Book a flight"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "type": "Column",
+                    "width": "stretch",
+                    "items": [
+                        {
+                            "type": "ActionSet",
+                            "actions": [
+                                {
+                                    "type": "Action.Submit",
+                                    "title": "Book a room",
+                                    "data": "Book a room"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "backgroundImage": {
+        "url": "https://image.freepik.com/free-vector/white-abstract-wallpaper_23-2148808302.jpg"
+    },
+    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+    "version": "1.3"
+}

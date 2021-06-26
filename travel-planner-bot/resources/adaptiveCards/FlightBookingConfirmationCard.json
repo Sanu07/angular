@@ -1,0 +1,236 @@
+{
+    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+    "version": "1.3",
+    "type": "AdaptiveCard",
+    "body": [
+        {
+            "type": "ColumnSet",
+            "spacing": "medium",
+            "separator": true,
+            "columns": [
+                {
+                    "type": "Column",
+                    "width": 1,
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "text": "**Flight**",
+                            "isSubtle": true,
+                            "weight": "Bolder",
+                            "wrap": true
+                        },
+                        {
+                            "type": "TextBlock",
+                            "text": "FL1789",
+                            "spacing": "Small",
+                            "wrap": true,
+                            "isSubtle": true
+                        }
+                    ]
+                },
+                {
+                    "type": "Column",
+                    "width": 1,
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "text": "**Booking ID**",
+                            "isSubtle": true,
+                            "horizontalAlignment": "center",
+                            "weight": "Bolder",
+                            "wrap": true
+                        },
+                        {
+                            "type": "TextBlock",
+                            "text": "${bookingID}",
+                            "horizontalAlignment": "center",
+                            "spacing": "Small",
+                            "wrap": true,
+                            "isSubtle": true
+                        }
+                    ]
+                },
+                {
+                    "type": "Column",
+                    "width": 1,
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "text": "**Scheduled on**",
+                            "isSubtle": true,
+                            "horizontalAlignment": "right",
+                            "weight": "Bolder",
+                            "wrap": true
+                        },
+                        {
+                            "type": "TextBlock",
+                            "text": "${scheduledDate}",
+                            "horizontalAlignment": "Right",
+                            "spacing": "Small",
+                            "wrap": true,
+                            "isSubtle": true
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "ColumnSet",
+            "separator": true,
+            "columns": [
+                {
+                    "type": "Column",
+                    "width": 1,
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "text": "${origin}",
+                            "isSubtle": true,
+                            "wrap": true
+                        }
+                    ]
+                },
+                {
+                    "type": "Column",
+                    "width": 1,
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "text": "${destination}",
+                            "horizontalAlignment": "Right",
+                            "isSubtle": true,
+                            "wrap": true
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "ColumnSet",
+            "spacing": "None",
+            "columns": [
+                {
+                    "type": "Column",
+                    "width": 1,
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "size": "ExtraLarge",
+                            "color": "Accent",
+                            "text": "${origin_short}",
+                            "spacing": "None",
+                            "wrap": true
+                        }
+                    ]
+                },
+                {
+                    "type": "Column",
+                    "width": "auto",
+                    "items": [
+                        {
+                            "type": "Image",
+                            "url": "https://adaptivecards.io/content/airplane.png",
+                            "size": "Small",
+                            "spacing": "None"
+                        }
+                    ]
+                },
+                {
+                    "type": "Column",
+                    "width": 1,
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "size": "ExtraLarge",
+                            "color": "Accent",
+                            "text": "${destination_short}",
+                            "horizontalAlignment": "Right",
+                            "spacing": "None",
+                            "wrap": true
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "ColumnSet",
+            "spacing": "Medium",
+            "separator": true,
+            "columns": [
+                {
+                    "type": "Column",
+                    "width": 1,
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "text": "**SEAT**",
+                            "size": "Medium",
+                            "isSubtle": true,
+                            "wrap": true
+                        }
+                    ]
+                },
+                {
+                    "type": "Column",
+                    "width": 1,
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "horizontalAlignment": "Center",
+                            "text": "${travellingClass}",
+                            "size": "Medium",
+                            "wrap": true,
+                            "isSubtle": true
+                        }
+                    ]
+                },
+                {
+                    "type": "Column",
+                    "width": 1,
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "horizontalAlignment": "Right",
+                            "text": "${seat}",
+                            "size": "Medium",
+                            "wrap": true,
+                            "isSubtle": true
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "ColumnSet",
+            "columns": [
+                {
+                    "type": "Column",
+                    "width": 1,
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "text": "**Total**",
+                            "size": "Medium",
+                            "isSubtle": true,
+                            "wrap": true
+                        }
+                    ]
+                },
+                {
+                    "type": "Column",
+                    "width": 1,
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "horizontalAlignment": "Right",
+                            "text": "Rs. 3500",
+                            "size": "Medium",
+                            "wrap": true,
+                            "isSubtle": true
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
