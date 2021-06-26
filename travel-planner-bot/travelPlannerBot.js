@@ -103,7 +103,7 @@ class TravelPlannerBot extends ActivityHandler {
                 await this.roomBookingDialog.run(context, this.dialogState);
                 conversationData.endDialog = await this.roomBookingDialog.isDialogComplete();
                 if (conversationData.endDialog) {
-                    await this.previousIntent.set(context, { intentName: null });
+                    await this.previousIntent.set(context, { intentName: undefined });
                     await this.sendSuggestedActions(context);
                 }
                 break;
@@ -113,8 +113,7 @@ class TravelPlannerBot extends ActivityHandler {
                 await this.flightBookingDialog.run(context, this.dialogState, entities);
                 conversationData.endDialog = await this.flightBookingDialog.isDialogComplete();
                 if (conversationData.endDialog) {
-                    this.flightConfirmationTime = 2;
-                    await this.previousIntent.set(context, { intentName: null });
+                    await this.previousIntent.set(context, { intentName: undefined });
                     await this.sendSuggestedActions(context);
                 }
                 break;

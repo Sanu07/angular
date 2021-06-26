@@ -13,6 +13,7 @@ const moment = require('moment');
 const Recognizers = require('@microsoft/recognizers-text-date-time');
 
 const TEXT_PROMPT = 'TEXT_PROMPT';
+const CONFIRM_PROMPT = 'CONFIRM_PROMPT';
 const HOTEL_LIST_TEXT_PROMPT = 'HOTEL_LIST_TEXT_PROMPT';
 const ROOM_BOOKING_DIALOG = 'ROOM_BOOKING_DIALOG';
 const hotelList = [
@@ -24,21 +25,24 @@ const hotelList = [
 var endDialog = '';
 
 class RoomBookingDialog extends ComponentDialog {
-    constructor(conservsationState, userState) {
+    constructor(conversationState, userState) {
 
         super('roomBookingDialog');
 
         this.addDialog(new TextPrompt(TEXT_PROMPT));
         this.addDialog(new TextPrompt(HOTEL_LIST_TEXT_PROMPT, this.hotelNameValidator));
+        this.addDialog(new ConfirmPrompt(CONFIRM_PROMPT));
 
         this.addDialog(new WaterfallDialog(ROOM_BOOKING_DIALOG, [
-            this.getDestination.bind(this),
-            this.getDate.bind(this),
-            this.getHotelsList.bind(this),
+            this.confirmDestinationStep.bind(this),
+            this.selectDestinationStep.bind(this),
+            this.selectDateStep.bind(this),
+            this.selectHotelStep.bind(this),
             this.summaryStep.bind(this)
         ]));
 
         this.initialDialogId = ROOM_BOOKING_DIALOG;
+        this.conversationState = conversationState;
     }
 
     async run(turnContext, accessor) {
@@ -52,19 +56,49 @@ class RoomBookingDialog extends ComponentDialog {
         }
     }
 
-    async getDestination(step) {
-        endDialog = false;
+    async confirmDestinationStep(step) {
+        this.conversationData = await this.conversationState.get(step.context, {});
+        if (this.conversationData.flightBookingData) {
+            this.timeDiff = moment.duration(moment(new Date()).diff(this.conversationData.flightBookingData.accessTime)).asSeconds();
+        }
+        if (step.options.customIndex && step.options.customIndex !== step.index) {
+            return await step.continueDialog();
+        }
+        if (this.timeDiff <= 20 && this.conversationData.flightBookingData.destination) {
+            this.skipDestinationStep = true;
+            return await step.prompt(CONFIRM_PROMPT, 'Do you want to book room for ' + this.conversationData.flightBookingData.destination + '?', ['Yes', 'No']);
+        }
+        return await step.continueDialog();
+    }
+
+    async selectDestinationStep(step) {
         console.log('book room - destination');
+        if (step.result && this.skipDestinationStep) {
+            step.values.destination = this.conversationData.flightBookingData.destination;
+            this.skipDestinationStep = false;
+            this.skipDateStep = true;
+            return await step.continueDialog();
+        }
+        if (step.options.customIndex && step.options.customIndex !== step.index) {
+            step.values.destination = step.options.destination;
+            return await step.continueDialog();
+        }
         await step.context.sendActivity({
             attachments: [CardFactory.adaptiveCard(JSON.parse(
                 JSON.stringify(SelectCityCard).replace('${title}', 'Please provide destination for Room booking')))]
         });
-        // Running a prompt here means the next WaterfallStep will be run when the users response is received.
         return await step.prompt(TEXT_PROMPT, '');
     }
 
-    async getDate(step) {
-        endDialog = false;
+    async selectDateStep(step) {
+        if (step.options.customIndex && step.options.customIndex !== step.index) {
+            step.values.bookingDate = step.options.bookingDate;
+            return await step.continueDialog();
+        }
+        if (this.skipDateStep) {
+            step.values.bookingDate = this.conversationData.flightBookingData.bookingDate;
+            return await step.continueDialog();
+        }
         step.values.destination = step.result
         await step.context.sendActivity({
             attachments: [CardFactory.adaptiveCard(JSON.parse(
@@ -77,10 +111,14 @@ class RoomBookingDialog extends ComponentDialog {
         return await step.prompt(TEXT_PROMPT, '');
     }
 
-    async getHotelsList(step) {
+    async selectHotelStep(step) {
         var value = step.result;
-        value = Recognizers.recognizeDateTime(value, 'en-US');
-        step.values.bookingDate = moment(value[0].resolution.values[0].value, 'YYYY-MM-DD').startOf('day').format('DD-MMMM-YYYY');
+        if (this.skipDateStep) {
+            this.skipDateStep = false;
+        } else {
+            value = Recognizers.recognizeDateTime(value, 'en-US');
+            step.values.bookingDate = moment(value[0].resolution.values[0].value, 'YYYY-MM-DD').startOf('day').format('DD-MMMM-YYYY');
+        }
         await step.context.sendActivity({
             attachments: this.productChoices(),
             attachmentLayout: AttachmentLayoutTypes.Carousel
@@ -89,7 +127,9 @@ class RoomBookingDialog extends ComponentDialog {
     }
 
     async summaryStep(step) {
-        const hotel = lodash.find(hotelList, ['name', step.result]);
+        const hotel = lodash.find(hotelList, (h) => {
+            return h.name.toLowerCase() === step.result.toLowerCase();
+        });
         step.values.hotel = hotel;
         await step.context.sendActivity({
             attachments: [CardFactory.adaptiveCard(JSON.parse(
@@ -116,7 +156,9 @@ class RoomBookingDialog extends ComponentDialog {
     async hotelNameValidator(promptContext) {
         console.log(promptContext.recognized.value);
         if (!promptContext.recognized.succeeded) return false;
-        const hotel = lodash.find(hotelList, ['name', promptContext.recognized.value]);
+        const hotel = lodash.find(hotelList, (h) => {
+            return h.name.toLowerCase() === promptContext.recognized.value.toLowerCase();
+        });
         if (!hotel) return false;
         return true;
     }

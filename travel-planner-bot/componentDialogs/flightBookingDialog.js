@@ -50,6 +50,7 @@ class FlightBookingDialog extends ComponentDialog {
 
         this.initialDialogId = FLIGHT_BOOKING_DIALOG;
         this.conversationState = conversationState;
+        this.flightBookingData = this.conversationState.createProperty('flightBookingData');
     }
 
     async run(turnContext, accessor, entities) {
@@ -143,7 +144,7 @@ class FlightBookingDialog extends ComponentDialog {
             }
         }
         value = Recognizers.recognizeDateTime(value, 'en-US');
-        step.values.bookingDate = moment(value, 'DD/MM/YYYY').startOf('day').format('DD-MMMM-YYYY');
+        step.values.bookingDate = moment(value[0].resolution.values[0].value, 'YYYY-MM-DD').startOf('day').format('DD-MMMM-YYYY');
         console.log('travelling-step');
         return await step.prompt(CHOICE_PROMPT, {
             prompt: 'Which class you want to travel?',
@@ -223,8 +224,18 @@ class FlightBookingDialog extends ComponentDialog {
     async finalStep(step) {
         endDialog = true;
         if (step.result) {
-            return await step.beginDialog('roomBookingDialog', { destination: step.values.destination });
+            return await step.beginDialog('roomBookingDialog',
+            { 
+                destination: step.values.destination,
+                customIndex: 1
+            });
         }
+        await this.flightBookingData.set(step.context,
+            {
+                destination: step.values.destination,
+                bookingDate: step.values.bookingDate,
+                accessTime: new Date()
+            });
         return await step.endDialog();
     }
 
@@ -261,7 +272,6 @@ class FlightBookingDialog extends ComponentDialog {
         if (!regexExp.test(promptContext.recognized.value)) {
             await promptContext.context.sendActivity({
                 text: 'Please select a seat from the image. (e.g A1)'
-                // attachments: [getSeatArrangementAttachment()]
             });
             return false;
         }
