@@ -71,7 +71,9 @@ class TravelPlannerBot extends ActivityHandler {
         }
     }
 
-    async sendSuggestedActions(context) {
+    async sendSuggestedActions(context, delay) {
+        delay = delay || 0;
+        await new Promise(resolve => setTimeout(resolve, delay));
         await context.sendActivity({
             attachments: [CardFactory.adaptiveCard(WelcomeCard)]
         });
@@ -104,7 +106,8 @@ class TravelPlannerBot extends ActivityHandler {
                 conversationData.endDialog = await this.roomBookingDialog.isDialogComplete();
                 if (conversationData.endDialog) {
                     await this.previousIntent.set(context, { intentName: undefined });
-                    await this.sendSuggestedActions(context);
+                    await this.sendSuggestedActions(context, 5000);
+                    await this.conversationState.clear(context);
                 }
                 break;
             case 'Book_a_flight':
@@ -112,9 +115,14 @@ class TravelPlannerBot extends ActivityHandler {
                 await this.conversationData.set(context, { endDialog: false });
                 await this.flightBookingDialog.run(context, this.dialogState, entities);
                 conversationData.endDialog = await this.flightBookingDialog.isDialogComplete();
-                if (conversationData.endDialog) {
+                conversationData.endChildDialog = await this.roomBookingDialog.isChildDialogCompleted();
+                if (conversationData.endDialog || conversationData.endChildDialog) {
                     await this.previousIntent.set(context, { intentName: undefined });
-                    await this.sendSuggestedActions(context);
+                    await this.sendSuggestedActions(context, 5000);
+                    await this.roomBookingDialog.resetChildDialog();
+                    if (conversationData.endChildDialog) {
+                        await this.conversationState.clear(context);
+                    }
                 }
                 break;
             default:

@@ -21,7 +21,7 @@ const FLIGHT_BOOKING_DIALOG = 'FLIGHT_BOOKING_DIALOG';
 const CONFIRM_PROMPT = 'CONFIRM_PROMPT';
 const CHOICE_PROMPT = 'CHOICE_PROMPT';
 const selectOptionsDateStep = ['Change Date', 'Change Destination', 'Start Over'];
-var endDialog = '';
+var endDialog = false;
 
 class FlightBookingDialog extends ComponentDialog {
 
@@ -45,7 +45,7 @@ class FlightBookingDialog extends ComponentDialog {
             this.seatSelectStep.bind(this),
             this.paymentStep.bind(this),
             this.summaryStep.bind(this),
-            this.finalStep.bind(this)
+            this.finalStep.bind(this),
         ]));
 
         this.initialDialogId = FLIGHT_BOOKING_DIALOG;
@@ -65,6 +65,7 @@ class FlightBookingDialog extends ComponentDialog {
     }
 
     async originStep(step) {
+        endDialog = false;
         step.values.origin = step._info.options.origin && step._info.options.origin[0];
         if ((step.options.customIndex && step.options.customIndex !== step.index)
             || step.values.origin) {
@@ -86,10 +87,12 @@ class FlightBookingDialog extends ComponentDialog {
     }
 
     async destinationStep(step) {
+        endDialog = false;
         console.log('destination-step');
         if (!step.values.origin) {
             if (this.isJson(step.result)) {
-                step.values.origin = JSON.parse(step.result).place;
+                const origin = JSON.parse(step.result).place;
+                step.values.origin = origin.charAt(0).toUpperCase() + origin.slice(1);
             } else {
                 step.values.origin = step.result;
             }
@@ -108,10 +111,12 @@ class FlightBookingDialog extends ComponentDialog {
     }
 
     async dateStep(step) {
+        endDialog = false;
         console.log('date-step');
         if (!step.values.destination) {
             if (this.isJson(step.result)) {
-                step.values.destination = JSON.parse(step.result).place;
+                const dest = JSON.parse(step.result).place;
+                step.values.destination = dest.charAt(0).toUpperCase() + dest.slice(1);
             } else {
                 step.values.destination = step.result;
             }
@@ -131,15 +136,16 @@ class FlightBookingDialog extends ComponentDialog {
     }
 
     async travellingClassStep(step) {
+        endDialog = false;
         var value = step.result;
         if (selectOptionsDateStep.indexOf(value) > -1) {
             switch (value) {
                 case 'Start Over':
-                    return await step.beginDialog('flightBookingDialog', { customIndex: 0 });
+                    return await step.replaceDialog('flightBookingDialog', { customIndex: 0 });
                 case 'Change Destination':
-                    return await step.beginDialog('flightBookingDialog', { customIndex: 1, origin: step.values.origin });
+                    return await step.replaceDialog('flightBookingDialog', { customIndex: 1, origin: step.values.origin });
                 case 'Change Date':
-                    return await step.beginDialog('flightBookingDialog',
+                    return await step.replaceDialog('flightBookingDialog',
                         { customIndex: 2, origin: step.values.origin, destination: step.values.destination });
             }
         }
@@ -155,8 +161,9 @@ class FlightBookingDialog extends ComponentDialog {
     }
 
     async seatBookingConfirmStep(step) {
+        endDialog = false;
         step.values.travellingClass = step.result.value;
-        switch (step.result) {
+        switch (step.result.value) {
             case 'Start Over':
                 return await step.beginDialog('flightBookingDialog', { customIndex: 0 });
             case 'Change Destination':
@@ -167,11 +174,12 @@ class FlightBookingDialog extends ComponentDialog {
     }
 
     async seatSelectStep(step) {
+        endDialog = false;
         console.log('seatSelect-step');
         if (step.result) {
             console.log('INSIDE seatSelect-step');
-            const message = "_**Awesome**_, please select your seat for flight from " + step.values.origin + " to "
-                + step.values.destination + " for " + step.values.travellingClass + " class ";
+            const message = "_**Awesome**_, please select your seat for flight from **" + step.values.origin + "** to **"
+                + step.values.destination + "** for **" + step.values.travellingClass + "** class ";
             await step.context.sendActivity({
                 text: message,
                 attachments: [this.getSeatArrangementAttachment()]
@@ -184,12 +192,14 @@ class FlightBookingDialog extends ComponentDialog {
     }
 
     async paymentStep(step) {
+        endDialog = false;
         console.log('payment-step');
         step.values.seat = step.result.toUpperCase()
         return await step.prompt(TEXT_PROMPT, 'Please complete payment by clicking [HERE](https://www.google.com/).');
     }
 
     async summaryStep(step) {
+        endDialog = false;
         step.values.payment = step.result
         console.log('summary-step');
         // await step.context.sendActivities([
@@ -202,40 +212,44 @@ class FlightBookingDialog extends ComponentDialog {
         console.log(step.result);
         console.log(step);
         const bookingID = new Date().getTime();
-        await step.context.sendActivity({
-            text: '**Thank you for your payment!** Your tickets have been booked and your _booking ID_ is **FL' + bookingID + '**'
-        });
-        await step.context.sendActivity({
-            attachments: [CardFactory.adaptiveCard(JSON.parse(
-                JSON.stringify(FlightBookingConfirmationCard)
-                    .replace('${bookingID}', bookingID)
-                    .replace('${scheduledDate}', step.values.bookingDate)
-                    .replace('${origin}', step.values.origin)
-                    .replace('${destination}', step.values.destination)
-                    .replace('${origin_short}', step.values.origin.substring(0, 3).toUpperCase())
-                    .replace('${destination_short}', step.values.destination.substring(0, 3).toUpperCase())
-                    .replace('${travellingClass}', step.values.travellingClass)
-                    .replace('${seat}', step.values.seat || '-')
-            ))]
-        });
+        await step.context.sendActivities([
+            { type: 'delay', value: 10000 },
+            { type: 'message', text: '**Thank you for your payment!** Your tickets have been booked and your _booking ID_ is **FL' + bookingID + '**' },
+            {
+                type: 'message',
+                attachments: [CardFactory.adaptiveCard(JSON.parse(
+                    JSON.stringify(FlightBookingConfirmationCard)
+                        .replace('${bookingID}', bookingID)
+                        .replace('${scheduledDate}', step.values.bookingDate)
+                        .replace('${origin}', step.values.origin)
+                        .replace('${destination}', step.values.destination)
+                        .replace('${origin_short}', step.values.origin.substring(0, 3).toUpperCase())
+                        .replace('${destination_short}', step.values.destination.substring(0, 3).toUpperCase())
+                        .replace('${travellingClass}', step.values.travellingClass)
+                        .replace('${seat}', step.values.seat || '-')
+                ))]
+            }
+        ]);
         return await step.prompt(CONFIRM_PROMPT, 'Do you want to book hotel room also?', ['Yes', 'No']);
     }
 
     async finalStep(step) {
-        endDialog = true;
         if (step.result) {
-            return await step.beginDialog('roomBookingDialog',
-            { 
-                destination: step.values.destination,
-                customIndex: 1
-            });
+            return await step.replaceDialog('roomBookingDialog',
+                {
+                    destination: step.values.destination,
+                    bookingDate: step.values.bookingDate,
+                    customIndex: 3
+                });
+        } else {
+            await this.flightBookingData.set(step.context,
+                {
+                    destination: step.values.destination,
+                    bookingDate: step.values.bookingDate,
+                    accessTime: new Date()
+                });
         }
-        await this.flightBookingData.set(step.context,
-            {
-                destination: step.values.destination,
-                bookingDate: step.values.bookingDate,
-                accessTime: new Date()
-            });
+        endDialog = true;
         return await step.endDialog();
     }
 
@@ -271,7 +285,7 @@ class FlightBookingDialog extends ComponentDialog {
         const regexExp = /[a-c]{1}[1-6]{1}/ig;
         if (!regexExp.test(promptContext.recognized.value)) {
             await promptContext.context.sendActivity({
-                text: 'Please select a seat from the image. (e.g A1)'
+                text: 'Please select a seat from the image. (e.g **_A1_**)'
             });
             return false;
         }

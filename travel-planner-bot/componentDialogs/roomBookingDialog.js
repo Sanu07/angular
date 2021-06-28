@@ -22,7 +22,8 @@ const hotelList = [
     { name: 'Hotel GHI', price: '1,500', ratings: '3 ★★★☆☆', reviews: '(1886 reviews)', imageURL: 'https://skift.com/wp-content/uploads/2021/05/JS_190520_0010-1024x684.jpg' },
     { name: 'Hotel JKL', price: '1,700', ratings: '4 ★★★★☆', reviews: '(1711 reviews)', imageURL: 'https://thumbs.dreamstime.com/b/hotel-lobby-luxury-staircases-fountain-39479289.jpg' }
 ]
-var endDialog = '';
+var endDialog = false;
+var isChildDialogCompleted = false;
 
 class RoomBookingDialog extends ComponentDialog {
     constructor(conversationState, userState) {
@@ -57,6 +58,7 @@ class RoomBookingDialog extends ComponentDialog {
     }
 
     async confirmDestinationStep(step) {
+        endDialog = false;
         this.conversationData = await this.conversationState.get(step.context, {});
         if (this.conversationData.flightBookingData) {
             this.timeDiff = moment.duration(moment(new Date()).diff(this.conversationData.flightBookingData.accessTime)).asSeconds();
@@ -64,7 +66,7 @@ class RoomBookingDialog extends ComponentDialog {
         if (step.options.customIndex && step.options.customIndex !== step.index) {
             return await step.continueDialog();
         }
-        if (this.timeDiff <= 20 && this.conversationData.flightBookingData.destination) {
+        if (this.timeDiff <= 20 && this.conversationData.flightBookingData && this.conversationData.flightBookingData.destination) {
             this.skipDestinationStep = true;
             return await step.prompt(CONFIRM_PROMPT, 'Do you want to book room for ' + this.conversationData.flightBookingData.destination + '?', ['Yes', 'No']);
         }
@@ -72,6 +74,7 @@ class RoomBookingDialog extends ComponentDialog {
     }
 
     async selectDestinationStep(step) {
+        endDialog = false;
         console.log('book room - destination');
         if (step.result && this.skipDestinationStep) {
             step.values.destination = this.conversationData.flightBookingData.destination;
@@ -91,8 +94,10 @@ class RoomBookingDialog extends ComponentDialog {
     }
 
     async selectDateStep(step) {
+        endDialog = false;
         if (step.options.customIndex && step.options.customIndex !== step.index) {
             step.values.bookingDate = step.options.bookingDate;
+            this.skipDateStep = true;
             return await step.continueDialog();
         }
         if (this.skipDateStep) {
@@ -112,6 +117,7 @@ class RoomBookingDialog extends ComponentDialog {
     }
 
     async selectHotelStep(step) {
+        endDialog = false;
         var value = step.result;
         if (this.skipDateStep) {
             this.skipDateStep = false;
@@ -146,11 +152,23 @@ class RoomBookingDialog extends ComponentDialog {
         console.log(step.result);
         console.log(step);
         endDialog = true;
+        if (step.parent && step.parent.parent && step.parent.parent.activeDialog.id === 'flightBookingDialog') {
+            isChildDialogCompleted = true;
+        }
         return await step.endDialog();
     }
 
     async isDialogComplete() {
         return endDialog;
+    }
+
+    async isChildDialogCompleted() {
+        return isChildDialogCompleted;
+    }
+
+    async resetChildDialog() {
+        isChildDialogCompleted = false;
+        return isChildDialogCompleted;
     }
 
     async hotelNameValidator(promptContext) {
@@ -159,7 +177,10 @@ class RoomBookingDialog extends ComponentDialog {
         const hotel = lodash.find(hotelList, (h) => {
             return h.name.toLowerCase() === promptContext.recognized.value.toLowerCase();
         });
-        if (!hotel) return false;
+        if (!hotel) {
+            await promptContext.context.sendActivity('Please enter a valid hotel name.(e.g **_Hotel ABC_**)');
+            return false;
+        }
         return true;
     }
 
