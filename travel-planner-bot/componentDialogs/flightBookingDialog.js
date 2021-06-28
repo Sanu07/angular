@@ -13,6 +13,7 @@ const { DialogSet, DialogTurnStatus } = require('botbuilder-dialogs');
 const SelectCityCard = require('../resources/adaptiveCards/SelectCityCard');
 const SelectDateCard = require('../resources/adaptiveCards/SelectDateCard');
 const FlightBookingConfirmationCard = require('../resources/adaptiveCards/FlightBookingConfirmationCard');
+const { CancelBookingDialog } = require('./cancelBookingDialog');
 
 const TEXT_PROMPT = 'TEXT_PROMPT';
 const SEAT_SELECT_TEXT_PROMPT = 'SEAT_SELECT_TEXT_PROMPT';
@@ -23,7 +24,7 @@ const CHOICE_PROMPT = 'CHOICE_PROMPT';
 const selectOptionsDateStep = ['Change Date', 'Change Destination', 'Start Over'];
 var endDialog = false;
 
-class FlightBookingDialog extends ComponentDialog {
+class FlightBookingDialog extends CancelBookingDialog {
 
     constructor(conversationState, userState) {
 
@@ -61,6 +62,8 @@ class FlightBookingDialog extends ComponentDialog {
         const results = await dialogContext.continueDialog();
         if (results.status === DialogTurnStatus.empty) {
             await dialogContext.beginDialog(this.id, entities);
+        } else if (results.status === DialogTurnStatus.complete) {
+            endDialog = true;
         }
     }
 

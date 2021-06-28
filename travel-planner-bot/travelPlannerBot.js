@@ -126,8 +126,8 @@ class TravelPlannerBot extends ActivityHandler {
                 }
                 break;
             default:
-                console.log("Did not match any case");
-                console.log(currentIntent);
+                const didntUnderstandMessageText = `**_Sorry_**, I didn't get that. Please try something as suggested.`;
+                await context.sendActivity(didntUnderstandMessageText, didntUnderstandMessageText);
                 break;
         }
     }

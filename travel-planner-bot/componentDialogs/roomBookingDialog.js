@@ -11,6 +11,7 @@ const RoomBookingConfirmationCard = require('../resources/adaptiveCards/RoomBook
 const lodash = require('lodash');
 const moment = require('moment');
 const Recognizers = require('@microsoft/recognizers-text-date-time');
+const { CancelBookingDialog } = require('./cancelBookingDialog');
 
 const TEXT_PROMPT = 'TEXT_PROMPT';
 const CONFIRM_PROMPT = 'CONFIRM_PROMPT';
@@ -25,7 +26,7 @@ const hotelList = [
 var endDialog = false;
 var isChildDialogCompleted = false;
 
-class RoomBookingDialog extends ComponentDialog {
+class RoomBookingDialog extends CancelBookingDialog {
     constructor(conversationState, userState) {
 
         super('roomBookingDialog');
@@ -54,6 +55,8 @@ class RoomBookingDialog extends ComponentDialog {
         const results = await dialogContext.continueDialog();
         if (results.status === DialogTurnStatus.empty) {
             await dialogContext.beginDialog(this.id);
+        } else if (results.status === DialogTurnStatus.complete) {
+            endDialog = true;
         }
     }
 
