@@ -70,10 +70,13 @@ class FlightBookingDialog extends CancelBookingDialog {
 
     async originStep(step) {
         endDialog = false;
-        step.values.origin = step._info.options.origin && step._info.options.origin[0];
         if ((step.options.customIndex && step.options.customIndex !== step.index)
             || step.values.origin) {
             step.values.origin = step.options.origin;
+            return await step.continueDialog();
+        }
+        if (step._info.options.origin) {
+            step.values.origin = step._info.options.origin[0];
             return await step.continueDialog();
         }
         await step.context.sendActivity({
@@ -93,10 +96,13 @@ class FlightBookingDialog extends CancelBookingDialog {
                 step.values.origin = step.result;
             }
         }
-        step.values.destination = step._info.options.destination && step._info.options.destination[0];
         if ((step.options.customIndex && step.options.customIndex !== step.index)
             || step.values.destination) {
             step.values.destination = step.options.destination;
+            return await step.continueDialog();
+        }
+        if (step._info.options.destination) {
+            step.values.destination = step._info.options.destination[0];
             return await step.continueDialog();
         }
         await step.context.sendActivity({
@@ -155,9 +161,9 @@ class FlightBookingDialog extends CancelBookingDialog {
         step.values.travellingClass = step.result.value;
         switch (step.result.value) {
             case 'Start Over':
-                return await step.beginDialog('flightBookingDialog', { customIndex: 0 });
+                return await step.replaceDialog('flightBookingDialog', { customIndex: 0 });
             case 'Change Destination':
-                return await step.beginDialog('flightBookingDialog', { customIndex: 1 });
+                return await step.replaceDialog('flightBookingDialog', { customIndex: 1, origin: step.values.origin });
         }
         return await step.prompt(CONFIRM_PROMPT, 'Do you want to select seat?', ['Yes', 'No']);
     }
@@ -182,13 +188,15 @@ class FlightBookingDialog extends CancelBookingDialog {
         step.values.seat = step.result.toUpperCase() === 'NO' ? '--' : step.result.toUpperCase();
         const message = 'Please complete payment by clicking [here](http://localhost:3978/pay)';
         await step.context.sendActivity(message);
-        await new Promise(resolve => {
-            commonEmitter.on('paymentURL_clicked_event', async function handler() {
-                await step.context.sendActivity({ type: ActivityTypes.Typing });
-                resolve(commonEmitter.removeListener('paymentURL_clicked_event', handler));
+        try {
+            await new Promise(resolve => {
+                commonEmitter.on('paymentURL_clicked_event', async function handler() {
+                    await step.context.sendActivity({ type: ActivityTypes.Typing });
+                    resolve(commonEmitter.removeListener('paymentURL_clicked_event', handler));
+                });
             });
-        });
-        await new Promise(resolve => setTimeout(resolve, 10000));
+        } catch (error) { }
+        // await new Promise(resolve => setTimeout(resolve, 10000));
         return await step.continueDialog();
     }
 
@@ -249,7 +257,8 @@ class FlightBookingDialog extends CancelBookingDialog {
         if (value === 'today' || value === 'tomorrow') {
             value = value === 'today' ? moment() : moment().add(1, 'days');
         } else {
-            value = moment(value, 'DD-MM-YYYY');
+            value = common.isJson(value) ? moment(JSON.parse(value).date, 'YYYY-MM-DD') :
+                moment(value, 'DD-MM-YYYY');
         }
         if (!moment(value).isValid() || moment(value).startOf('day').isBefore(moment(new Date()).startOf('day'))) {
             await promptContext.context.sendActivity('Please enter a **valid future** date in format (DD-MM-YYYY). (e.g **' + moment(new Date()).add(1, 'days').format('DD-MM-YYYY') + '**) for **' + moment(new Date()).add(1, 'days').format('DD-MMMM-YYYY') + '**');

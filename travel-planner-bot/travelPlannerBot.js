@@ -45,7 +45,6 @@ class TravelPlannerBot extends ActivityHandler {
         });
 
         this.onDialog(async (context, next) => {
-            // Save any state changes. The load happened during the execution of the Dialog.
             await this.conversationState.saveChanges(context, false);
             await this.userState.saveChanges(context, false);
             await next();
@@ -53,7 +52,6 @@ class TravelPlannerBot extends ActivityHandler {
 
         this.onMembersAdded(async (context, next) => {
             await this.sendWelcomeMessage(context)
-            // By calling next() you ensure that the next BotHandler is run.
             await next();
         });
     }
@@ -61,11 +59,9 @@ class TravelPlannerBot extends ActivityHandler {
     async sendWelcomeMessage(context) {
         const { activity } = context;
 
-        // Iterate over all new members added to the conversation.
         for (const idx in activity.membersAdded) {
             if (activity.membersAdded[idx].id !== activity.recipient.id) {
                 const welcomeMessage = WELCOME_MESSAGE;
-                // await context.sendActivity(welcomeMessage);
                 await this.sendSuggestedActions(context);
             }
         }
@@ -86,7 +82,6 @@ class TravelPlannerBot extends ActivityHandler {
         const conversationData = await this.conversationData.get(context, {});
         if (context.activity.text === undefined && context.activity.value) {
             context.activity.text = JSON.stringify(context.activity.value);
-            console.log(context.activity.text);
         }
         if (previousIntent.intentName && conversationData.endDialog === false) {
             currentIntent = previousIntent.intentName;
@@ -100,29 +95,27 @@ class TravelPlannerBot extends ActivityHandler {
         }
         switch (currentIntent) {
             case 'Book_a_room':
-                console.log("Inside Room Booking");
                 await this.conversationData.set(context, { endDialog: false });
                 await this.roomBookingDialog.run(context, this.dialogState);
                 conversationData.endDialog = await this.roomBookingDialog.isDialogComplete();
                 if (conversationData.endDialog) {
                     await this.previousIntent.set(context, { intentName: undefined });
-                    await this.sendSuggestedActions(context, 5000);
                     await this.conversationState.clear(context);
+                    await this.sendSuggestedActions(context, 2000);
                 }
                 break;
             case 'Book_a_flight':
-                console.log("Inside Flight Booking");
                 await this.conversationData.set(context, { endDialog: false });
                 await this.flightBookingDialog.run(context, this.dialogState, entities);
                 conversationData.endDialog = await this.flightBookingDialog.isDialogComplete();
                 conversationData.endChildDialog = await this.roomBookingDialog.isChildDialogCompleted();
                 if (conversationData.endDialog || conversationData.endChildDialog) {
                     await this.previousIntent.set(context, { intentName: undefined });
-                    await this.sendSuggestedActions(context, 5000);
                     await this.roomBookingDialog.resetChildDialog();
                     if (conversationData.endChildDialog) {
                         await this.conversationState.clear(context);
                     }
+                    await this.sendSuggestedActions(context, 5000);
                 }
                 break;
             default:

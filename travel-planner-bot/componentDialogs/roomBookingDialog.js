@@ -83,12 +83,14 @@ class RoomBookingDialog extends CancelBookingDialog {
         endDialog = false;
         if (step.result && this.skipDestinationStep) {
             step.values.destination = this.conversationData.flightBookingData.destination;
+            step.values.destination = step.values.destination.charAt(0).toUpperCase() + step.values.destination.slice(1);
             this.skipDestinationStep = false;
             this.skipDateStep = true;
             return await step.continueDialog();
         }
         if (step.options.customIndex && step.options.customIndex !== step.index) {
             step.values.destination = step.options.destination;
+            step.values.destination = step.values.destination.charAt(0).toUpperCase() + step.values.destination.slice(1);
             return await step.continueDialog();
         }
         await step.context.sendActivity({
@@ -114,7 +116,7 @@ class RoomBookingDialog extends CancelBookingDialog {
             const destination = JSON.parse(step.result).place;
             step.values.destination = destination.charAt(0).toUpperCase() + destination.slice(1);
         } else {
-            step.values.destination = step.result;
+            step.values.destination = step.result.charAt(0).toUpperCase() + step.result.slice(1);
         }
         await step.context.sendActivity({
             attachments: [CardFactory.adaptiveCard(JSON.parse(
