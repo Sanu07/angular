@@ -1,0 +1,219 @@
+{
+  "luis_schema_version": "7.0.0",
+  "intents": [
+    {
+      "name": "Book a flight",
+      "features": []
+    },
+    {
+      "name": "Book a room",
+      "features": []
+    },
+    {
+      "name": "None",
+      "features": []
+    }
+  ],
+  "entities": [
+    {
+      "name": "destination",
+      "children": [],
+      "roles": [],
+      "features": []
+    },
+    {
+      "name": "origin",
+      "children": [],
+      "roles": [],
+      "features": []
+    }
+  ],
+  "hierarchicals": [],
+  "composites": [],
+  "closedLists": [],
+  "prebuiltEntities": [],
+  "utterances": [
+    {
+      "text": "book a flight from delhi to kolkata",
+      "intent": "Book a flight",
+      "entities": [
+        {
+          "entity": "origin",
+          "startPos": 19,
+          "endPos": 23,
+          "children": []
+        },
+        {
+          "entity": "destination",
+          "startPos": 28,
+          "endPos": 34,
+          "children": []
+        }
+      ]
+    },
+    {
+      "text": "book a room for me",
+      "intent": "Book a room",
+      "entities": []
+    },
+    {
+      "text": "book an economy or business class ticket from delhi to mumbai",
+      "intent": "Book a flight",
+      "entities": [
+        {
+          "entity": "origin",
+          "startPos": 46,
+          "endPos": 50,
+          "children": []
+        },
+        {
+          "entity": "destination",
+          "startPos": 55,
+          "endPos": 60,
+          "children": []
+        }
+      ]
+    },
+    {
+      "text": "can you please arrange me a flight from delhi to mumbai",
+      "intent": "Book a flight",
+      "entities": [
+        {
+          "entity": "origin",
+          "startPos": 40,
+          "endPos": 44,
+          "children": []
+        },
+        {
+          "entity": "destination",
+          "startPos": 49,
+          "endPos": 54,
+          "children": []
+        }
+      ]
+    },
+    {
+      "text": "destination kolkata origin mumbai",
+      "intent": "Book a flight",
+      "entities": [
+        {
+          "entity": "destination",
+          "startPos": 0,
+          "endPos": 10,
+          "children": []
+        },
+        {
+          "entity": "origin",
+          "startPos": 27,
+          "endPos": 32,
+          "children": []
+        }
+      ]
+    },
+    {
+      "text": "dogs are barking",
+      "intent": "None",
+      "entities": []
+    },
+    {
+      "text": "flight booking",
+      "intent": "Book a flight",
+      "entities": []
+    },
+    {
+      "text": "flight from tamil nadu to andhra pradesh",
+      "intent": "Book a flight",
+      "entities": [
+        {
+          "entity": "origin",
+          "startPos": 12,
+          "endPos": 21,
+          "children": []
+        },
+        {
+          "entity": "destination",
+          "startPos": 26,
+          "endPos": 31,
+          "children": []
+        },
+        {
+          "entity": "destination",
+          "startPos": 33,
+          "endPos": 39,
+          "children": []
+        }
+      ]
+    },
+    {
+      "text": "hey! please book a flight for me",
+      "intent": "Book a flight",
+      "entities": []
+    },
+    {
+      "text": "hotel booking",
+      "intent": "Book a room",
+      "entities": []
+    },
+    {
+      "text": "i am not in a mood of listening to you",
+      "intent": "None",
+      "entities": []
+    },
+    {
+      "text": "i want to book a room",
+      "intent": "Book a room",
+      "entities": []
+    },
+    {
+      "text": "plane booking",
+      "intent": "Book a flight",
+      "entities": []
+    },
+    {
+      "text": "rent a room",
+      "intent": "Book a room",
+      "entities": []
+    },
+    {
+      "text": "room booking",
+      "intent": "Book a room",
+      "entities": []
+    },
+    {
+      "text": "roses are red",
+      "intent": "None",
+      "entities": []
+    },
+    {
+      "text": "search a room",
+      "intent": "Book a room",
+      "entities": []
+    },
+    {
+      "text": "shark in the ocean",
+      "intent": "None",
+      "entities": []
+    },
+    {
+      "text": "sky is blue",
+      "intent": "None",
+      "entities": []
+    },
+    {
+      "text": "today is a sunny day",
+      "intent": "None",
+      "entities": []
+    }
+  ],
+  "versionId": "0.1",
+  "name": "ChatBot",
+  "desc": "Chat Bot NLP",
+  "culture": "en-us",
+  "tokenizerVersion": "1.0.0",
+  "patternAnyEntities": [],
+  "regex_entities": [],
+  "phraselists": [],
+  "regex_features": [],
+  "patterns": [],
+  "settings": []
+}

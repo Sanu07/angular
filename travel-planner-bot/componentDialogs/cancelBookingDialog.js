@@ -15,7 +15,7 @@ class CancelBookingDialog extends ComponentDialog {
         if (innerDc.context.activity.text) {
             const text = innerDc.context.activity.text.toLowerCase();
             if (text === 'cancel') {
-                await innerDc.context.sendActivity('**CANCELLED**');
+                await innerDc.context.sendActivity('**BOOKING PROCESS CANCELLED**');
                 return await innerDc.cancelAllDialogs();
             }
         }

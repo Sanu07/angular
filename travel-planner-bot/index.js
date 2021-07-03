@@ -3,6 +3,9 @@
 
 const path = require('path');
 
+var common = require('./utils/util');
+var commonEmitter = common.commonEmitter;
+
 const dotenv = require('dotenv');
 // Import required bot configuration.
 const ENV_FILE = path.join(__dirname, '.env');
@@ -68,6 +71,10 @@ server.post('/api/messages', (req, res) => {
         // Route to main dialog.
         await travelPlannerBot.run(context);
     });
+});
+
+server.get('/pay', (req, res) => {
+    commonEmitter.emit('paymentURL_clicked_event');
 });
 
 // Listen for Upgrade requests for Streaming.

@@ -1,5 +1,6 @@
 const { WaterfallDialog, ComponentDialog } = require('botbuilder-dialogs');
-const { MessageFactory, CardFactory, AttachmentLayoutTypes } = require('botbuilder');
+const common = require('../utils/util');
+const { MessageFactory, CardFactory, AttachmentLayoutTypes, ActivityTypes, ActionTypes, TurnContext } = require('botbuilder');
 
 const { ConfirmPrompt, ChoicePrompt, DateTimePrompt, NumberPrompt, TextPrompt } = require('botbuilder-dialogs');
 
@@ -14,6 +15,7 @@ const Recognizers = require('@microsoft/recognizers-text-date-time');
 const { CancelBookingDialog } = require('./cancelBookingDialog');
 
 const TEXT_PROMPT = 'TEXT_PROMPT';
+const DATE_TEXT_PROMPT = 'DATE_TEXT_PROMPT';
 const CONFIRM_PROMPT = 'CONFIRM_PROMPT';
 const HOTEL_LIST_TEXT_PROMPT = 'HOTEL_LIST_TEXT_PROMPT';
 const ROOM_BOOKING_DIALOG = 'ROOM_BOOKING_DIALOG';
@@ -32,6 +34,7 @@ class RoomBookingDialog extends CancelBookingDialog {
         super('roomBookingDialog');
 
         this.addDialog(new TextPrompt(TEXT_PROMPT));
+        this.addDialog(new TextPrompt(DATE_TEXT_PROMPT, this.roomBookingDateValidator));
         this.addDialog(new TextPrompt(HOTEL_LIST_TEXT_PROMPT, this.hotelNameValidator));
         this.addDialog(new ConfirmPrompt(CONFIRM_PROMPT));
 
@@ -78,7 +81,6 @@ class RoomBookingDialog extends CancelBookingDialog {
 
     async selectDestinationStep(step) {
         endDialog = false;
-        console.log('book room - destination');
         if (step.result && this.skipDestinationStep) {
             step.values.destination = this.conversationData.flightBookingData.destination;
             this.skipDestinationStep = false;
@@ -93,6 +95,7 @@ class RoomBookingDialog extends CancelBookingDialog {
             attachments: [CardFactory.adaptiveCard(JSON.parse(
                 JSON.stringify(SelectCityCard).replace('${title}', 'Please provide destination for Room booking')))]
         });
+
         return await step.prompt(TEXT_PROMPT, '');
     }
 
@@ -107,29 +110,35 @@ class RoomBookingDialog extends CancelBookingDialog {
             step.values.bookingDate = this.conversationData.flightBookingData.bookingDate;
             return await step.continueDialog();
         }
-        step.values.destination = step.result
+        if (common.isJson(step.result)) {
+            const destination = JSON.parse(step.result).place;
+            step.values.destination = destination.charAt(0).toUpperCase() + destination.slice(1);
+        } else {
+            step.values.destination = step.result;
+        }
         await step.context.sendActivity({
             attachments: [CardFactory.adaptiveCard(JSON.parse(
                 JSON.stringify(SelectDateCard)
                     .replace('${title}', 'For when you want to book Room?')
-                    .replace('${today}', moment(new Date()).format("DD/MM/YYYY"))
-                    .replace('${tomorrow}', moment().add(1, 'days').format("DD/MM/YYYY"))
+                    .replace('${today}', moment(new Date()).format("DD-MM-YYYY"))
+                    .replace('${tomorrow}', moment().add(1, 'days').format("DD-MM-YYYY"))
             ))]
         });
-        return await step.prompt(TEXT_PROMPT, '');
+        return await step.prompt(DATE_TEXT_PROMPT, '');
     }
 
     async selectHotelStep(step) {
         endDialog = false;
-        var value = step.result;
         if (this.skipDateStep) {
             this.skipDateStep = false;
         } else {
-            value = Recognizers.recognizeDateTime(value, 'en-US');
-            step.values.bookingDate = moment(value[0].resolution.values[0].value, 'YYYY-MM-DD').startOf('day').format('DD-MMMM-YYYY');
+            const value = common.isJson(step.result) ? moment(JSON.parse(step.result).date, 'YYYY-MM-DD') :
+                moment(step.result, 'DD-MM-YYYY');
+            step.values.bookingDate = moment(value).startOf('day').format('DD-MMMM-YYYY');
         }
         await step.context.sendActivity({
-            attachments: this.productChoices(),
+            text: 'Please select from below available hotels',
+            attachments: this.getHotelChoices(),
             attachmentLayout: AttachmentLayoutTypes.Carousel
         });
         return await step.prompt(HOTEL_LIST_TEXT_PROMPT, '');
@@ -151,9 +160,6 @@ class RoomBookingDialog extends CancelBookingDialog {
                     .replace('${date}', step.values.bookingDate)
             ))]
         });
-        console.log(step.values);
-        console.log(step.result);
-        console.log(step);
         endDialog = true;
         if (step.parent && step.parent.parent && step.parent.parent.activeDialog.id === 'flightBookingDialog') {
             isChildDialogCompleted = true;
@@ -174,38 +180,48 @@ class RoomBookingDialog extends CancelBookingDialog {
         return isChildDialogCompleted;
     }
 
+    async roomBookingDateValidator(promptContext) {
+        if (!promptContext.recognized.succeeded) return false;
+        const bookingDate = promptContext.recognized.value;
+        if (moment(promptContext.recognized.value, 'DD-MM-YYYY').isValid()) {
+            return true;
+        } else {
+            await promptContext.context.sendActivity('Please enter a valid date in format (DD-MM-YYYY). (e.g **' + moment(new Date()).format('DD-MM-YYYY') + '**) for **' + moment(new Date()).format('DD-MMMM-YYYY') + '**');
+            return false;
+        }
+    }
+
     async hotelNameValidator(promptContext) {
-        console.log(promptContext.recognized.value);
         if (!promptContext.recognized.succeeded) return false;
         const hotel = lodash.find(hotelList, (h) => {
             return h.name.toLowerCase() === promptContext.recognized.value.toLowerCase();
         });
         if (!hotel) {
-            await promptContext.context.sendActivity('Please enter a valid hotel name.(e.g **_Hotel ABC_**)');
+            await promptContext.context.sendActivity('Please enter a valid hotel name from the available hotels.(e.g **_Hotel ABC_**)');
             return false;
         }
         return true;
     }
 
-    productChoices() {
+    getHotelChoices() {
         const productSeriesOptions = [
             CardFactory.heroCard(
-                hotelList[0].name + ' \n\n INR ' + hotelList[0].price + '  per room/night \n\n' + hotelList[0].ratings + ' ' + hotelList[0].reviews,
+                hotelList[0].name + ' \n\n INR ' + hotelList[0].price + ' ~~2100~~  per room/night \n\n' + hotelList[0].ratings + ' ' + hotelList[0].reviews,
                 [hotelList[0].imageURL],
             ),
 
             CardFactory.heroCard(
-                hotelList[1].name + ' \n\n INR ' + hotelList[1].price + '  per room/night \n\n' + hotelList[1].ratings + ' ' + hotelList[1].reviews,
+                hotelList[1].name + ' \n\n INR ' + hotelList[1].price + ' ~~2400~~  per room/night \n\n' + hotelList[1].ratings + ' ' + hotelList[1].reviews,
                 [hotelList[1].imageURL],
             ),
 
             CardFactory.heroCard(
-                hotelList[2].name + ' \n\n INR ' + hotelList[2].price + '  per room/night \n\n' + hotelList[2].ratings + ' ' + hotelList[2].reviews,
+                hotelList[2].name + ' \n\n INR ' + hotelList[2].price + ' ~~2200~~  per room/night \n\n' + hotelList[2].ratings + ' ' + hotelList[2].reviews,
                 [hotelList[2].imageURL],
             ),
 
             CardFactory.heroCard(
-                hotelList[3].name + ' \n\n INR ' + hotelList[3].price + '  per room/night \n\n' + hotelList[3].ratings + ' ' + hotelList[3].reviews,
+                hotelList[3].name + ' \n\n INR ' + hotelList[3].price + ' ~~2300~~  per room/night \n\n' + hotelList[3].ratings + ' ' + hotelList[3].reviews,
                 [hotelList[3].imageURL],
             )
         ];

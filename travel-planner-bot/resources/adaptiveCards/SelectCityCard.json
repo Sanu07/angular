@@ -89,7 +89,7 @@
                                                 "isRequired": true,
                                                 "errorMessage": "Should be a valid city name",
                                                 "label": "City",
-                                                "isMultiline": true
+                                                "isMultiline": false
                                             }
                                         ],
                                         "actions": [

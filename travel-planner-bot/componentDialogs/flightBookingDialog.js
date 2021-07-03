@@ -2,9 +2,10 @@ const { WaterfallDialog, ComponentDialog, ChoiceFactory, ListStyle, Recognizer }
 const { MessageFactory, CardFactory, AttachmentLayoutTypes, ActivityTypes } = require('botbuilder');
 const path = require('path');
 const { RoomBookingDialog } = require('./roomBookingDialog');
-const Recognizers = require('@microsoft/recognizers-text-date-time');
 fs = require('fs');
 const moment = require('moment');
+const common = require('../utils/util');
+var commonEmitter = common.commonEmitter;
 
 const { ConfirmPrompt, ChoicePrompt, DateTimePrompt, NumberPrompt, TextPrompt } = require('botbuilder-dialogs');
 
@@ -17,7 +18,7 @@ const { CancelBookingDialog } = require('./cancelBookingDialog');
 
 const TEXT_PROMPT = 'TEXT_PROMPT';
 const SEAT_SELECT_TEXT_PROMPT = 'SEAT_SELECT_TEXT_PROMPT';
-const DATETIME_TEXT_PROMPT = 'DATETIME_TEXT_PROMPT';
+const DATE_TEXT_PROMPT = 'DATE_TEXT_PROMPT';
 const FLIGHT_BOOKING_DIALOG = 'FLIGHT_BOOKING_DIALOG';
 const CONFIRM_PROMPT = 'CONFIRM_PROMPT';
 const CHOICE_PROMPT = 'CHOICE_PROMPT';
@@ -32,7 +33,7 @@ class FlightBookingDialog extends CancelBookingDialog {
 
         this.addDialog(new TextPrompt(TEXT_PROMPT));
         this.addDialog(new TextPrompt(SEAT_SELECT_TEXT_PROMPT, this.seatBookingValidator));
-        this.addDialog(new TextPrompt(DATETIME_TEXT_PROMPT, this.bookingDateValidator));
+        this.addDialog(new TextPrompt(DATE_TEXT_PROMPT, this.bookingDateValidator));
         this.addDialog(new ConfirmPrompt(CONFIRM_PROMPT));
         this.addDialog(new ChoicePrompt(CHOICE_PROMPT));
         this.addDialog(new RoomBookingDialog(conversationState, userState));
@@ -75,25 +76,17 @@ class FlightBookingDialog extends CancelBookingDialog {
             step.values.origin = step.options.origin;
             return await step.continueDialog();
         }
-        console.log('origin-step');
         await step.context.sendActivity({
             attachments: [CardFactory.adaptiveCard(JSON.parse(
                 JSON.stringify(SelectCityCard).replace('${title}', 'What\'s the origin of flight?')))]
         });
-        return await step.prompt(TEXT_PROMPT, {
-            prompt: '',
-            retryPrompt: 'error'
-        });
-        // return await step.prompt(TEXT_PROMPT, 
-        //    'Please complete payment by clicking [HERE](https://www.google.com/).'
-        // );
+        return await step.prompt(TEXT_PROMPT, '');
     }
 
     async destinationStep(step) {
         endDialog = false;
-        console.log('destination-step');
         if (!step.values.origin) {
-            if (this.isJson(step.result)) {
+            if (common.isJson(step.result)) {
                 const origin = JSON.parse(step.result).place;
                 step.values.origin = origin.charAt(0).toUpperCase() + origin.slice(1);
             } else {
@@ -115,9 +108,8 @@ class FlightBookingDialog extends CancelBookingDialog {
 
     async dateStep(step) {
         endDialog = false;
-        console.log('date-step');
         if (!step.values.destination) {
-            if (this.isJson(step.result)) {
+            if (common.isJson(step.result)) {
                 const dest = JSON.parse(step.result).place;
                 step.values.destination = dest.charAt(0).toUpperCase() + dest.slice(1);
             } else {
@@ -132,17 +124,13 @@ class FlightBookingDialog extends CancelBookingDialog {
                     .replace('${tomorrow}', moment().add(1, 'days').format("DD/MM/YYYY"))
             ))]
         });
-        return await step.prompt(DATETIME_TEXT_PROMPT, {
-            prompt: '',
-            retryPrompt: ''
-        });
+        return await step.prompt(DATE_TEXT_PROMPT, '');
     }
 
     async travellingClassStep(step) {
         endDialog = false;
-        var value = step.result;
-        if (selectOptionsDateStep.indexOf(value) > -1) {
-            switch (value) {
+        if (selectOptionsDateStep.indexOf(step.result) > -1) {
+            switch (step.result) {
                 case 'Start Over':
                     return await step.replaceDialog('flightBookingDialog', { customIndex: 0 });
                 case 'Change Destination':
@@ -152,13 +140,12 @@ class FlightBookingDialog extends CancelBookingDialog {
                         { customIndex: 2, origin: step.values.origin, destination: step.values.destination });
             }
         }
-        value = Recognizers.recognizeDateTime(value, 'en-US');
-        step.values.bookingDate = moment(value[0].resolution.values[0].value, 'YYYY-MM-DD').startOf('day').format('DD-MMMM-YYYY');
-        console.log('travelling-step');
+        const value = common.isJson(step.result) ? moment(JSON.parse(step.result).date, 'YYYY-MM-DD') :
+            moment(step.result, 'DD-MM-YYYY');
+        step.values.bookingDate = moment(value).startOf('day').format('DD-MMMM-YYYY');
         return await step.prompt(CHOICE_PROMPT, {
             prompt: 'Which class you want to travel?',
             choices: ChoiceFactory.toChoices(['Economy', 'Business', 'Change Destination', 'Start Over']),
-            retryPrompt: 'Please choose exact options.',
             style: ListStyle.heroCard
         });
     }
@@ -172,15 +159,12 @@ class FlightBookingDialog extends CancelBookingDialog {
             case 'Change Destination':
                 return await step.beginDialog('flightBookingDialog', { customIndex: 1 });
         }
-        console.log('seatConfirm-step');
         return await step.prompt(CONFIRM_PROMPT, 'Do you want to select seat?', ['Yes', 'No']);
     }
 
     async seatSelectStep(step) {
         endDialog = false;
-        console.log('seatSelect-step');
         if (step.result) {
-            console.log('INSIDE seatSelect-step');
             const message = "_**Awesome**_, please select your seat for flight from **" + step.values.origin + "** to **"
                 + step.values.destination + "** for **" + step.values.travellingClass + "** class ";
             await step.context.sendActivity({
@@ -189,40 +173,36 @@ class FlightBookingDialog extends CancelBookingDialog {
             });
             return await step.prompt(SEAT_SELECT_TEXT_PROMPT, '');
         } else {
-            console.log(step.options);
             return await step.continueDialog();
         }
     }
 
     async paymentStep(step) {
         endDialog = false;
-        console.log('payment-step');
-        step.values.seat = step.result.toUpperCase()
-        return await step.prompt(TEXT_PROMPT, 'Please complete payment by clicking [HERE](https://www.google.com/).');
+        step.values.seat = step.result.toUpperCase() === 'NO' ? '--' : step.result.toUpperCase();
+        const message = 'Please complete payment by clicking [here](http://localhost:3978/pay)';
+        await step.context.sendActivity(message);
+        await new Promise(resolve => {
+            commonEmitter.on('paymentURL_clicked_event', async function handler() {
+                await step.context.sendActivity({ type: ActivityTypes.Typing });
+                resolve(commonEmitter.removeListener('paymentURL_clicked_event', handler));
+            });
+        });
+        await new Promise(resolve => setTimeout(resolve, 10000));
+        return await step.continueDialog();
     }
 
     async summaryStep(step) {
         endDialog = false;
-        step.values.payment = step.result
-        console.log('summary-step');
-        // await step.context.sendActivities([
-        //     { type: ActivityTypes.Typing },
-        //     { type: 'delay', value: 5000 },
-        //     { type: ActivityTypes.Message, text: '' }
-        // ]);
-        console.log('working');
-        console.log(step.values);
-        console.log(step.result);
-        console.log(step);
+        step.values.payment = step.result;
         const bookingID = new Date().getTime();
         await step.context.sendActivities([
-            { type: 'delay', value: 10000 },
             { type: 'message', text: '**Thank you for your payment!** Your tickets have been booked and your _booking ID_ is **FL' + bookingID + '**' },
             {
                 type: 'message',
                 attachments: [CardFactory.adaptiveCard(JSON.parse(
                     JSON.stringify(FlightBookingConfirmationCard)
-                        .replace('${bookingID}', bookingID)
+                        .replace('${bookingID}', 'FL' + bookingID)
                         .replace('${scheduledDate}', step.values.bookingDate)
                         .replace('${origin}', step.values.origin)
                         .replace('${destination}', step.values.destination)
@@ -263,14 +243,16 @@ class FlightBookingDialog extends CancelBookingDialog {
     async bookingDateValidator(promptContext) {
         if (!promptContext.recognized.succeeded) return false;
         var value = promptContext.recognized.value;
-        console.log(value);
         if (promptContext.attemptCount > 1 && selectOptionsDateStep.indexOf(value) > -1) {
             return true;
         }
-        value = Recognizers.recognizeDateTime(value, 'en-US');
-        value = value[0].resolution.values[0].value;
+        if (value === 'today' || value === 'tomorrow') {
+            value = value === 'today' ? moment() : moment().add(1, 'days');
+        } else {
+            value = moment(value, 'DD-MM-YYYY');
+        }
         if (!moment(value).isValid() || moment(value).startOf('day').isBefore(moment(new Date()).startOf('day'))) {
-            await promptContext.context.sendActivity('Please enter a valid date.');
+            await promptContext.context.sendActivity('Please enter a **valid future** date in format (DD-MM-YYYY). (e.g **' + moment(new Date()).add(1, 'days').format('DD-MM-YYYY') + '**) for **' + moment(new Date()).add(1, 'days').format('DD-MMMM-YYYY') + '**');
             await promptContext.context.sendActivity(MessageFactory.suggestedActions(selectOptionsDateStep, ''));
             return false;
         }
@@ -283,25 +265,15 @@ class FlightBookingDialog extends CancelBookingDialog {
     }
 
     async seatBookingValidator(promptContext) {
-        console.log(promptContext.recognized.value);
         if (!promptContext.recognized.succeeded) return false;
         const regexExp = /[a-c]{1}[1-6]{1}/ig;
         if (!regexExp.test(promptContext.recognized.value)) {
             await promptContext.context.sendActivity({
-                text: 'Please select a seat from the image. (e.g **_A1_**)'
+                text: 'Please select a seat from the image. (e.g **_A1_ _B4_ _C6_**)'
             });
             return false;
         }
         return true;
-    }
-
-    isJson(element) {
-        try {
-            JSON.parse(element);
-            return true;
-        } catch (error) {
-            return false;
-        }
     }
 
     getSeatArrangementAttachment() {
