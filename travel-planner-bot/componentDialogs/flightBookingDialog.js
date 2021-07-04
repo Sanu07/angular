@@ -141,7 +141,8 @@ class FlightBookingDialog extends CancelBookingDialog {
         if (selectOptionsDateStep.indexOf(step.result) > -1) {
             switch (step.result) {
                 case 'Start Over':
-                    return await step.replaceDialog('flightBookingDialog', { customIndex: 0 });
+                    endDialog = true;
+                    return await step.endDialog();
                 case 'Change Destination':
                     return await step.replaceDialog('flightBookingDialog', { customIndex: 1, origin: step.values.origin });
                 case 'Change Date':
@@ -164,7 +165,8 @@ class FlightBookingDialog extends CancelBookingDialog {
         step.values.travellingClass = step.result.value;
         switch (step.result.value) {
             case 'Start Over':
-                return await step.replaceDialog('flightBookingDialog', { customIndex: 0 });
+                endDialog = true;
+                return await step.endDialog();
             case 'Change Destination':
                 return await step.replaceDialog('flightBookingDialog', { customIndex: 1, origin: step.values.origin });
         }
