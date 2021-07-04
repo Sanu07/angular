@@ -1,20 +1,17 @@
-const { WaterfallDialog, ComponentDialog, ChoiceFactory, ListStyle, Recognizer } = require('botbuilder-dialogs');
-const { MessageFactory, CardFactory, AttachmentLayoutTypes, ActivityTypes } = require('botbuilder');
-const path = require('path');
+const { MessageFactory, CardFactory, ActivityTypes } = require('botbuilder');
+const { WaterfallDialog, ConfirmPrompt, ChoicePrompt, ChoiceFactory, ListStyle, TextPrompt, DialogSet, DialogTurnStatus } = require('botbuilder-dialogs');
+
 const { RoomBookingDialog } = require('./roomBookingDialog');
-fs = require('fs');
-const moment = require('moment');
-const common = require('../utils/util');
-var commonEmitter = common.commonEmitter;
-
-const { ConfirmPrompt, ChoicePrompt, DateTimePrompt, NumberPrompt, TextPrompt } = require('botbuilder-dialogs');
-
-const { DialogSet, DialogTurnStatus } = require('botbuilder-dialogs');
-
 const SelectCityCard = require('../resources/adaptiveCards/SelectCityCard');
 const SelectDateCard = require('../resources/adaptiveCards/SelectDateCard');
 const FlightBookingConfirmationCard = require('../resources/adaptiveCards/FlightBookingConfirmationCard');
 const { CancelBookingDialog } = require('./cancelBookingDialog');
+
+const path = require('path');
+fs = require('fs');
+const moment = require('moment');
+const common = require('../utils/util');
+var commonEmitter = common.commonEmitter;
 
 const TEXT_PROMPT = 'TEXT_PROMPT';
 const SEAT_SELECT_TEXT_PROMPT = 'SEAT_SELECT_TEXT_PROMPT';
@@ -70,11 +67,14 @@ class FlightBookingDialog extends CancelBookingDialog {
 
     async originStep(step) {
         endDialog = false;
+        // this part executes when beginDialog/replaceDialog is called from any step but this particular step is not intended.
+        // At that time, the value for the origin as provided by the user is saved again and the next step is called
         if ((step.options.customIndex && step.options.customIndex !== step.index)
             || step.values.origin) {
             step.values.origin = step.options.origin;
             return await step.continueDialog();
         }
+        // this part executes if value comes from LUIS entities
         if (step._info.options.origin) {
             step.values.origin = step._info.options.origin[0];
             return await step.continueDialog();
@@ -91,16 +91,19 @@ class FlightBookingDialog extends CancelBookingDialog {
         if (!step.values.origin) {
             if (common.isJson(step.result)) {
                 const origin = JSON.parse(step.result).place;
-                step.values.origin = origin.charAt(0).toUpperCase() + origin.slice(1);
+                step.values.origin = origin.charAt(0).toUpperCase() + origin.slice(1).toLowerCase();
             } else {
                 step.values.origin = step.result;
             }
         }
+        // this part executes when beginDialog/replaceDialog is called from any step but this particular step is not intended.
+        // At that time, the value for the destination as provided by the user is saved again and the next step is called
         if ((step.options.customIndex && step.options.customIndex !== step.index)
             || step.values.destination) {
             step.values.destination = step.options.destination;
             return await step.continueDialog();
         }
+        // this part executes if value comes from LUIS entities
         if (step._info.options.destination) {
             step.values.destination = step._info.options.destination[0];
             return await step.continueDialog();
@@ -117,7 +120,7 @@ class FlightBookingDialog extends CancelBookingDialog {
         if (!step.values.destination) {
             if (common.isJson(step.result)) {
                 const dest = JSON.parse(step.result).place;
-                step.values.destination = dest.charAt(0).toUpperCase() + dest.slice(1);
+                step.values.destination = dest.charAt(0).toUpperCase() + dest.slice(1).toLowerCase();
             } else {
                 step.values.destination = step.result;
             }
@@ -186,6 +189,8 @@ class FlightBookingDialog extends CancelBookingDialog {
     async paymentStep(step) {
         endDialog = false;
         step.values.seat = step.result.toUpperCase() === 'NO' ? '--' : step.result.toUpperCase();
+        // this message is created with a link that hits back to the same running node server
+        // so as to track whether the payment link has been clicked or not
         const message = 'Please complete payment by clicking [here](http://localhost:3978/pay)';
         await step.context.sendActivity(message);
         try {
@@ -224,6 +229,10 @@ class FlightBookingDialog extends CancelBookingDialog {
         return await step.prompt(CONFIRM_PROMPT, 'Do you want to book hotel room also?', ['Yes', 'No']);
     }
 
+    /**
+     * This final step is required to populate the conversationData/DialogData with the flight booking details
+     * which might be required for roomBookingDialog
+     */
     async finalStep(step) {
         if (step.result) {
             return await step.replaceDialog('roomBookingDialog',
@@ -254,17 +263,21 @@ class FlightBookingDialog extends CancelBookingDialog {
         if (promptContext.attemptCount > 1 && selectOptionsDateStep.indexOf(value) > -1) {
             return true;
         }
+        // the user has a provision to input 'today' or 'tomorrow'
         if (value === 'today' || value === 'tomorrow') {
             value = value === 'today' ? moment() : moment().add(1, 'days');
         } else {
             value = common.isJson(value) ? moment(JSON.parse(value).date, 'YYYY-MM-DD') :
                 moment(value, 'DD-MM-YYYY');
         }
+        // the date input should be valid future date. If date provided is of 'today', the value is passed
+        // so as to provide the user with different error message in the next if block
         if (!moment(value).isValid() || moment(value).startOf('day').isBefore(moment(new Date()).startOf('day'))) {
             await promptContext.context.sendActivity('Please enter a **valid future** date in format (DD-MM-YYYY). (e.g **' + moment(new Date()).add(1, 'days').format('DD-MM-YYYY') + '**) for **' + moment(new Date()).add(1, 'days').format('DD-MMMM-YYYY') + '**');
             await promptContext.context.sendActivity(MessageFactory.suggestedActions(selectOptionsDateStep, ''));
             return false;
         }
+        // if date is for today required message is shown
         if (moment(value).startOf('day').isSame(moment(new Date()).startOf('day'))) {
             await promptContext.context.sendActivity('No Flights are available for today.');
             await promptContext.context.sendActivity(MessageFactory.suggestedActions(selectOptionsDateStep, ''));
@@ -275,6 +288,7 @@ class FlightBookingDialog extends CancelBookingDialog {
 
     async seatBookingValidator(promptContext) {
         if (!promptContext.recognized.succeeded) return false;
+        // A regex to validate the seat number
         const regexExp = /[a-c]{1}[1-6]{1}/ig;
         if (!regexExp.test(promptContext.recognized.value)) {
             await promptContext.context.sendActivity({

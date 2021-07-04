@@ -1,6 +1,9 @@
-const { InputHints } = require('botbuilder');
 const { ComponentDialog, DialogTurnStatus } = require('botbuilder-dialogs');
 
+/**
+ * This class handles the cancel text at any of the waterfall step. The onContinueDialog method from Component
+ * Dialog has been overridden to verify if the text input at any point is 'cancel' or not.
+ */
 class CancelBookingDialog extends ComponentDialog {
 
     async onContinueDialog(innerDc) {

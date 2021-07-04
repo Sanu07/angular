@@ -101,6 +101,8 @@ class TravelPlannerBot extends ActivityHandler {
                 if (conversationData.endDialog) {
                     await this.previousIntent.set(context, { intentName: undefined });
                     await this.conversationState.clear(context);
+                    // this delay is added to keep a small gap between the completion of a particular dialog
+                    // and displaying the welcome message
                     await this.sendSuggestedActions(context, 2000);
                 }
                 break;
@@ -112,9 +114,13 @@ class TravelPlannerBot extends ActivityHandler {
                 if (conversationData.endDialog || conversationData.endChildDialog) {
                     await this.previousIntent.set(context, { intentName: undefined });
                     await this.roomBookingDialog.resetChildDialog();
+                    // this only clears the data if child dialog is completed otherwise it has to be referred
+                    // if user tries to book a room within 20 sec after completing flight booking
                     if (conversationData.endChildDialog) {
                         await this.conversationState.clear(context);
                     }
+                    // this delay is added to keep a small gap between the completion of a particular dialog
+                    // and displaying the welcome message
                     await this.sendSuggestedActions(context, 5000);
                 }
                 break;
